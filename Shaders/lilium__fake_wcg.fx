@@ -1,6 +1,5 @@
-// #include "Reshade.fxh"
-// #include "ReShadeUI.fxh"
-#include "lilium__include/colour_space.fxh"
+#include "lilium__include/include_main.fxh"
+
 
 #if ACTUAL_COLOUR_SPACE == CSP_SCRGB || defined(MANUAL_OVERRIDE_MODE_ENABLE_INTERNAL)
 
@@ -65,11 +64,11 @@ float3 RestoreHueAndChrominanceBT2020(float3 targetColor, float3 sourceColor, fl
   const static float maxChrominanceChange = asfloat(0x7F7FFFFF);
   
   // Invalid or black colors fail oklab conversions or ab blending so early out
-  if (dot(targetColor, Csp::Mat::Bt2020ToXYZ[1]) <= asfloat(0x00800000))
+  if (dot(targetColor, Csp::Mat::BT2020_To_XYZ[1]) <= asfloat(0x00800000))
     return targetColor; // Optionally we could blend the target towards the source, or towards black, but there's no need until proven otherwise
 
-	const float3 sourceUcsLab = Csp::OkLab::Bt2020To::OkLab(sourceColor);
-	float3 targetUcsLab = Csp::OkLab::Bt2020To::OkLab(targetColor);
+	const float3 sourceUcsLab = Csp::OKLab::BT2020_To::OKLab(sourceColor);
+	float3 targetUcsLab = Csp::OKLab::BT2020_To::OKLab(targetColor);
    
   targetUcsLab.x = lerp(targetUcsLab.x, sourceUcsLab.x, lightnessStrength);
   
@@ -104,7 +103,7 @@ float3 RestoreHueAndChrominanceBT2020(float3 targetColor, float3 sourceColor, fl
   //Saturation
   targetUcsLab.yz *= Saturation;
 
-	return Csp::OkLab::OkLabTo::Bt2020(targetUcsLab);
+	return Csp::OKLab::OKLab_To::BT2020(targetUcsLab);
 }
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -114,16 +113,16 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
   //HDR10 BT2020 or scRGB BT709?
   #ifndef IS_HDR10_LIKE_CSP
-    float3 colorRef = Csp::Mat::Bt709To::Bt2020(color.rgb);
+    float3 colorRef = Csp::Mat::BT709_To::BT2020(color.rgb);
     float3 colorExp  = color.rgb;
   #else 
     float3 colorRef = color.rgb;
-    float3 colorExp  = Csp::Mat::Bt2020To::Bt709(color.rgb);
+    float3 colorExp  = Csp::Mat::BT2020_To::BT709(color.rgb);
   #endif
 
   //expand
   colorExp = Sign_UltraFast(colorExp) * pow(abs(colorExp), 1/DecodeGamma);
-  colorExp = Csp::Mat::Bt709To::Bt2020(colorExp);
+  colorExp = Csp::Mat::BT709_To::BT2020(colorExp);
   colorExp = Sign_UltraFast(colorExp) * pow(abs(colorExp), DecodeGamma);
 
   //correct
@@ -136,7 +135,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
   //to scRGB BT709?
   #ifndef IS_HDR10_LIKE_CSP
-    colorExp = Csp::Mat::Bt2020To::Bt709(colorExp);
+    colorExp = Csp::Mat::BT2020_To::BT709(colorExp);
   #endif 
   
   //out

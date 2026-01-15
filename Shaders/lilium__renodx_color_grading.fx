@@ -1,6 +1,5 @@
-// #include "Reshade.fxh"
-// #include "ReShadeUI.fxh"
-#include "lilium__include/colour_space.fxh"
+#include "lilium__include/include_main.fxh"
+
 
 #if (defined(IS_HDR_CSP))
 
@@ -141,17 +140,17 @@ float RenoDX_Highlights(float x, float highlights, float mid_gray) {
 
 float3 Saturation(float3 x, float sat) {
   #ifndef IS_HDR10_LIKE_CSP
-    x = Csp::OkLab::Bt709To::OkLab(x);
+    x = Csp::OKLab::BT709_To::OKLab(x);
   #else
-    x = Csp::OkLab::Bt2020To::OkLab(x);
+    x = Csp::OKLab::BT2020_To::OKLab(x);
   #endif
 
   x.yz *= sat;
 
   #ifndef IS_HDR10_LIKE_CSP
-    x = Csp::OkLab::OkLabTo::Bt709(x);
+    x = Csp::OKLab::OKLab_To::BT709(x);
   #else
-    x = Csp::OkLab::OkLabTo::Bt2020(x);
+    x = Csp::OKLab::OKLab_To::BT2020(x);
   #endif
 
   return x;
