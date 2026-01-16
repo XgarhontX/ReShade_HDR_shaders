@@ -91,7 +91,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 // 	position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 // }
 
-technique lilium__RenoDX_ColorGrading 
+technique lilium__SwapchainPass
 <
   ui_label = "Lilium's Swapchain Pass (sRGB to scRGB)";
 >
@@ -106,7 +106,7 @@ technique lilium__RenoDX_ColorGrading
 
 ERROR_STUFF
 
-technique lilium__RenoDX_ColorGrading
+technique lilium__SwapchainPass
 <
   ui_label = "Lilium's Swapchain Pass (sRGB to scRGB) (ERROR)";
 >
