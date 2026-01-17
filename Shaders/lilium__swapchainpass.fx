@@ -57,30 +57,29 @@ float3 EOTFEmulate(float3 color, float gamma) {
 ///////////////////////////////////////////////////////////////////////////////////
 
 float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : SV_Target0 {
-	float4 color = tex2Dfetch(SamplerBackBuffer, int2(Position.xy));
+  float4 color = tex2Dfetch(SamplerBackBuffer, int2(Position.xy));
 	
   //not scRGB
   #if ACTUAL_COLOUR_SPACE != CSP_SCRGB
     return color;
   #endif
 
-  //color.xyz = max(0, color.xyz);
-  if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT709_To::BT2020(color.xyz);
-
   //Decode (in BT709)
   color.xyz = Sign_UltraFast(color.xyz) * Csp::Trc::sRGB_To::Linear(abs(color.xyz));
 	
   //UI Brightness
-	color.xyz *= UIBrightness / 80;
+  color.xyz *= UIBrightness / 80;
+	
+  //color.xyz = max(0, color.xyz);
+  if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT709_To::BT2020(color.xyz);
 
   //EOTF Emulate
-	color.xyz = EOTFEmulate(color.xyz, 2.2);
+  color.xyz = EOTFEmulate(color.xyz, 2.2);
 
   //Out WORKINGCS (to BT709)
   if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT2020_To::BT709(color.xyz);
 
-
-	return color;
+  return color;
 }
 
 // // Vertex shader generating a triangle covering the entire screen
