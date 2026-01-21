@@ -3,11 +3,21 @@
 #if ACTUAL_COLOUR_SPACE == CSP_SCRGB || defined(MANUAL_OVERRIDE_MODE_ENABLE_INTERNAL)
 
 // ReShadeUI ///////////////////////////////////////////////////////////////////////////////////////
-uniform float UIBrightness <
+uniform int DecodeGamma
+<
+  ui_category = "Decode";
+  ui_label    = "Gamma";
+  ui_type     = "combo";
+  ui_items    = "sRGB\0"
+                "2.2\0";
+  ui_tooltip = "Decode the formerly SDR-intended image.\nUsually it is sRGB, but it must be confirmed in shader code.";
+> = 0;
+
+uniform float DecodeUIBrightness <
   ui_type = "slider";
-  ui_category = "Brightness";
-  ui_label = "UI Brightness";
-  ui_tooltip = "Inverse the scaling to change UI brightness.\nIf UI Brighntess is not implemented, this is paper white scaling.";
+  ui_category = "Decode";
+  ui_label = "UI Brightness (Read Tooltip!)";
+  ui_tooltip = "If UI Brightness is set beforehand, this can inverse the scaling multiplier to only change UI.\nElse, this will just be paper white scaling.";
   ui_min = 20;
   ui_max = 500;
   ui_step = 1.f;
@@ -26,7 +36,7 @@ uniform float EOTFEmuThres <
 uniform bool EOTFEmuBT2020 <
     ui_category = "EOTF / Gamma Correction";
     ui_label = "Wide Color Gamut Boost";
-    ui_tooltip = "Enocode to BT2020 before gamma correction, pushing out color.";
+    ui_tooltip = "Enocode to BT2020 before gamma correction, pushing out colors to WCG.";
 > = false;
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -65,10 +75,12 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
   #endif
 
   //Decode (in BT709)
-  color.xyz = Sign_UltraFast(color.xyz) * Csp::Trc::sRGB_To::Linear(abs(color.xyz));
+  float3 cS = Sign_UltraFast(color.xyz);
+  float3 cA = abs(color.xyz);
+  color.xyz = cS * (DecodeGamma == 0 ? Csp::Trc::sRGB_To::Linear(cA) : pow(cA, 2.2));
 	
   //UI Brightness
-  color.xyz *= UIBrightness / 80;
+  color.xyz *= DecodeUIBrightness / 80;
 	
   //color.xyz = max(0, color.xyz);
   if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT709_To::BT2020(color.xyz);
@@ -92,7 +104,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
 technique lilium__SwapchainPass
 <
-  ui_label = "Lilium's Swapchain Pass (sRGB to scRGB)";
+  ui_label = "Lilium's Swapchain Pass (Gamma to scRGB)";
 >
 {
 	pass Final {
@@ -107,7 +119,7 @@ ERROR_STUFF
 
 technique lilium__SwapchainPass
 <
-  ui_label = "Lilium's Swapchain Pass (sRGB to scRGB) (ERROR)";
+  ui_label = "Lilium's Swapchain Pass (Gamma to scRGB) (ERROR)";
 >
 VS_ERROR
 

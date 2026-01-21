@@ -121,8 +121,9 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
   #endif
 
   //expand
-  colorExp = Sign_UltraFast(colorExp) * pow(abs(colorExp), 1/DecodeGamma);
+  colorExp = Sign_UltraFast(colorExp) * pow(abs(colorExp), rcp(DecodeGamma));
   colorExp = Csp::Mat::BT709_To::BT2020(colorExp);
+  //colorExp = Sign_UltraFast(colorExp) * Csp::Trc::Linear_To::sRGB(abs(colorExp));
   colorExp = Sign_UltraFast(colorExp) * pow(abs(colorExp), DecodeGamma);
 
   //correct
