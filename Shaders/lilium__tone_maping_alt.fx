@@ -142,15 +142,17 @@ float3 Rescale(float3 x, float3 x_min, float3 x_max, bool clamp) {
 }
 
 bool IsWorkingBT2020() {
-  #if IS_HDR10_LIKE_CSP
+  #ifdef IS_HDR10_LIKE_CSP
     return true;
+  #else
+    #if TONEMAP_COLORSPACE == 0
+      return false;
+    #else
+      return true;
+    #endif
   #endif
 
-  #if TONEMAP_COLORSPACE == 0
-    return false;
-  #else
-    return true;
-  #endif
+
 }
 
 float GetLuminanceSpecify(float3 x, bool isBT2020) {
