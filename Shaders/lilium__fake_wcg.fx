@@ -153,7 +153,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
 technique lilium__RenoDX_ColorGrading 
 <
-  ui_label = "Lilium's Fake WCG";
+  ui_label = "Lilium's Gamma Gamut Expand";
 >
 {
 	pass Final {
@@ -168,7 +168,7 @@ ERROR_STUFF
 
 technique lilium__RenoDX_ColorGrading
 <
-  ui_label = "Lilium's Fake WCG (ERROR)";
+  ui_label = "Lilium's Gamma Gamut Expand (ERROR)";
 >
 VS_ERROR
 
