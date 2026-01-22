@@ -10,7 +10,7 @@ uniform int DecodeGamma
   ui_type     = "combo";
   ui_items    = "sRGB\0"
                 "2.2\0";
-  ui_tooltip = "Decode the formerly SDR-intended image.\nUsually it is sRGB, but it must be confirmed in shader code.";
+  ui_tooltip = "Decode the formerly SDR-intended image.\nUsually it is sRGB, but it must be confirmed in shader code.\n\nSetting it one higher than intended is EOTF / Gamma Correction, but it messes with peak.\nTherefore, see the slider below.";
 > = 0;
 
 uniform float DecodeUIBrightness <
@@ -23,6 +23,11 @@ uniform float DecodeUIBrightness <
   ui_step = 1.f;
 > = 203;
 
+#ifndef EOTF_ENABLED
+  #define EOTF_ENABLED 1
+#endif
+
+#if EOTF_ENABLED > 0
 uniform float EOTFEmuThres <
   ui_type = "slider";
   ui_category = "EOTF / Gamma Correction";
@@ -38,6 +43,7 @@ uniform bool EOTFEmuBT2020 <
     ui_label = "Wide Color Gamut Boost";
     ui_tooltip = "Enocode to BT2020 before gamma correction, pushing out colors to WCG.";
 > = false;
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////
 //https://github.com/Filoppi/Luma-Framework/blob/main/Shaders/Includes/Math.hlsl
@@ -48,6 +54,7 @@ float3 Sign_UltraFast(float3 x)
 
 float SafeDivision(float a, float b, float f = 0) { return b != 0.f ? a / b : f; }
 
+#if EOTF_ENABLED > 0
 float3 EOTFEmulate(float3 color, float gamma) {
   if (EOTFEmuThres <= 0) return color;
 
@@ -64,6 +71,7 @@ float3 EOTFEmulate(float3 color, float gamma) {
 
   return color;
 }
+#endif
 ///////////////////////////////////////////////////////////////////////////////////
 
 float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : SV_Target0 {
@@ -82,6 +90,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
   //UI Brightness
   color.xyz *= DecodeUIBrightness / 80;
 	
+#if EOTF_ENABLED > 0
   //color.xyz = max(0, color.xyz);
   if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT709_To::BT2020(color.xyz);
 
@@ -90,6 +99,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
   //Out WORKINGCS (to BT709)
   if (EOTFEmuBT2020) color.xyz = Csp::Mat::BT2020_To::BT709(color.xyz);
+#endif
 
   return color;
 }
