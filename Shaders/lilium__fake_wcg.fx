@@ -39,8 +39,8 @@ uniform float CorrectionLuminance <
 > = 0.5;
 
 #ifndef CLAMP_BT2020
-  #define CLAMP_BT2020 1
-#endif
+  #define CLAMP_BT2020 0
+#endif 
 
 ///////////////////////////////////////////////////////////////////////////////////
 float3 Sign(float3 x) { return sign(x); }
