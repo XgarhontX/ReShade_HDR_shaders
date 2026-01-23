@@ -8,8 +8,8 @@ uniform int DecodeGamma
   ui_category = "Decode";
   ui_label    = "Gamma";
   ui_type     = "combo";
-  ui_items    = "sRGB\0"
-                "2.2\0";
+  ui_items    = "sRGB (Base)\0"
+                "2.2 (Stronger)\0";
   ui_tooltip = "Decode the formerly SDR-intended image.\nUsually it is sRGB, but it must be confirmed in shader code.\n\nSetting it one higher than intended is EOTF / Gamma Correction, but it messes with peak.\nTherefore, see the slider below.";
 > = 0;
 
