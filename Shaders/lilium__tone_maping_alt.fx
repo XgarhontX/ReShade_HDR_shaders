@@ -113,7 +113,7 @@ uniform float ToneMapPeak <
     ui_tooltip = "There is peak overshoot by scaling from luma.\nThis will scale down those overshoot while retaining it's saturation,\nthough it may be unnatural.";
   > = 0;
 #else
-  uniform bool IsMaxChannelScaleDown = false;
+  #define IsMaxChannelScaleDown false
 #endif
 
 uniform float ToneMapExposure <
