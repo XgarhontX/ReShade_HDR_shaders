@@ -4,14 +4,16 @@
 #if (defined(IS_HDR_CSP))
 
 #ifndef TONEMAP_TYPE
-  #define TONEMAP_TYPE 0
+  #define TONEMAP_TYPE 2
 #endif
 #if TONEMAP_TYPE == 0
   #define TONEMAP_TYPE_STRING " - Type (0/2): Reinhard (Gradual)"
 #elif  TONEMAP_TYPE == 1
   #define TONEMAP_TYPE_STRING " - Type (1/2): Exponential Rolloff (Aggressive)"
 #elif  TONEMAP_TYPE == 2
-  #define TONEMAP_TYPE_STRING " - Type (2/2): Hermite Spline"
+  #define TONEMAP_TYPE_STRING " - Type (2/2): Hermite Spline (Scalable)"
+#else 
+  #define TONEMAP_TYPE_STRING " - Type (?/2): Error"
 #endif
 
 
@@ -22,17 +24,21 @@
   #define TONEMAP_MODE_STRING " - Mode (0/1): Per-Channel"
 #elif TONEMAP_MODE == 1
   #define TONEMAP_MODE_STRING " - Mode (1/1): Luminance"
+#else 
+  #define TONEMAP_MODE_STRING " - Mode (?/1): Error"
 #endif
 
-#ifndef IS_HDR10_LIKE_CSP
-  #ifndef TONEMAP_COLORSPACE
-    #define TONEMAP_COLORSPACE 0
-  #endif
-  #if TONEMAP_COLORSPACE == 0
-    #define TONEMAP_COLORSPACE_STRING " - Color Space (0/1): BT709"
-  #elif TONEMAP_COLORSPACE == 1
-    #define TONEMAP_COLORSPACE_STRING " - Color Space (1/1): BT2020"
-  #endif
+#ifndef TONEMAP_COLORSPACE
+  #define TONEMAP_COLORSPACE 0
+#endif
+#if TONEMAP_COLORSPACE == 0
+  #define TONEMAP_COLORSPACE_STRING " - Color Space (0/2): BT709"
+#elif TONEMAP_COLORSPACE == 1
+  #define TONEMAP_COLORSPACE_STRING " - Color Space (1/2): DCI-P3"
+#elif TONEMAP_COLORSPACE == 2
+  #define TONEMAP_COLORSPACE_STRING " - Color Space (2/2): BT2020"
+#else 
+  #define TONEMAP_COLORSPACE_STRING " - Color Space (?/2): Error"
 #endif
 
 uniform int GLOBAL_INFO_2
@@ -85,12 +91,12 @@ uniform float ToneMapPeak <
 
 #if TONEMAP_TYPE == 0 || TONEMAP_TYPE == 2
   uniform float ToneMapWhiteMax <
-      ui_type = "slider";
+      ui_type = "drag2";
       ui_category = "Tone Map";
       ui_label = "Expected Max";
       ui_tooltip = "Expected max for the tonemapper.\nReduce to white clip.";
       ui_min = 100;
-      ui_max = 10000;
+      ui_max = 1000000;
       ui_step = 1;
   > = 10000;
   #define TONEMAP_PARAMS_WHITEMAX
@@ -106,6 +112,8 @@ uniform float ToneMapPeak <
                   "On\0";
     ui_tooltip = "There is peak overshoot by scaling from luma.\nThis will scale down those overshoot while retaining it's saturation,\nthough it may be unnatural.";
   > = 0;
+#else
+  uniform bool IsMaxChannelScaleDown = false;
 #endif
 
 uniform float ToneMapExposure <
@@ -151,13 +159,16 @@ bool IsWorkingBT2020() {
       return true;
     #endif
   #endif
-
-
 }
 
-float GetLuminanceSpecify(float3 x, bool isBT2020) {
-  if (!isBT2020) dot(x, Csp::Mat::BT709_To_XYZ[1]);
-  return dot(x, Csp::Mat::BT2020_To_XYZ[1]);
+float GetLuminanceWorking(float3 x) {
+  #if TONEMAP_COLORSPACE == 0
+    return dot(x, Csp::Mat::BT709_To_XYZ[1]);
+  #elif TONEMAP_COLORSPACE == 1
+     return dot(x, Csp::Mat::DCIP3_To_XYZ[1]);
+  #elif TONEMAP_COLORSPACE == 2
+    return dot(x, Csp::Mat::BT2020_To_XYZ[1]);
+  #endif
 }
 
 // float MapInto(float x) {
@@ -364,7 +375,7 @@ float3 Tonemap(float3 x) {
   #if TONEMAP_MODE == 0 
     float3 xT = x;
   #else
-    float xT = GetLuminanceSpecify(x, IsWorkingBT2020());
+    float xT = GetLuminanceWorking(x);
     if (xT <= 0) return x; 
     float xTOrig = xT;
   #endif
@@ -391,16 +402,32 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 	float4 color = tex2Dfetch(SamplerBackBuffer, int2(Position.xy));
 	float3 x = color.xyz;
 	
-  #if !defined(IS_HDR10_LIKE_CSP) && TONEMAP_COLORSPACE == 1
-    x = Csp::Mat::BT709_To::BT2020(x);
+  #if !defined(IS_HDR10_LIKE_CSP)
+    #if TONEMAP_COLORSPACE == 0
+      //noop
+    #elif TONEMAP_COLORSPACE == 1
+      x = Csp::Mat::BT709_To::DCIP3(x);
+    #elif TONEMAP_COLORSPACE == 2
+      x = Csp::Mat::BT709_To::BT2020(x);
+    #endif
+  #else
+    WIP;
   #endif
 
   x = max(0, x);
   x *= ToneMapExposure;
   x = Tonemap(x);
 
-  #if !defined(IS_HDR10_LIKE_CSP) && TONEMAP_COLORSPACE == 1
-    x = Csp::Mat::BT2020_To::BT709(x);
+  #if !defined(IS_HDR10_LIKE_CSP)
+    #if TONEMAP_COLORSPACE == 0
+      //noop
+    #elif TONEMAP_COLORSPACE == 1
+      x = Csp::Mat::DCIP3_To::BT709(x);
+    #elif TONEMAP_COLORSPACE == 2
+      x = Csp::Mat::BT2020_To::BT709(x);
+    #endif
+  #else 
+    WIP;
   #endif
 
 	return float4(x, color.a);
