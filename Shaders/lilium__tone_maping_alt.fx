@@ -41,31 +41,6 @@
   #define TONEMAP_COLORSPACE_STRING " - Color Space (?/2): Error"
 #endif
 
-uniform int GLOBAL_INFO_2
-<
-  ui_category = "Tone Map Info (See Defines)";
-  ui_label    = " ";
-  ui_type     = "radio";
-  ui_text     = TONEMAP_COLORSPACE_STRING;
-  nosave      = true;
->;
-uniform int GLOBAL_INFO_1
-<
-  ui_category = "Tone Map Info (See Defines)";
-  ui_label    = " ";
-  ui_type     = "radio";
-  ui_text     = TONEMAP_MODE_STRING;
-  nosave      = true;
->;
-uniform int GLOBAL_INFO_0
-<
-  ui_category = "Tone Map Info (See Defines)";
-  ui_label    = " ";
-  ui_type     = "radio";
-  ui_text     = TONEMAP_TYPE_STRING;
-  nosave      = true;
->;
-
 uniform float ToneMapPeak <
     ui_type = "slider";
     ui_category = "Tone Map";
@@ -125,6 +100,31 @@ uniform float ToneMapExposure <
     ui_max = 3;
     ui_step = 0.001;
 > = 1;
+
+uniform int GLOBAL_INFO_2
+<
+  ui_category = "Tone Map Info (See Defines)";
+  ui_label    = " ";
+  ui_type     = "radio";
+  ui_text     = TONEMAP_COLORSPACE_STRING;
+  nosave      = true;
+>;
+uniform int GLOBAL_INFO_1
+<
+  ui_category = "Tone Map Info (See Defines)";
+  ui_label    = " ";
+  ui_type     = "radio";
+  ui_text     = TONEMAP_MODE_STRING;
+  nosave      = true;
+>;
+uniform int GLOBAL_INFO_0
+<
+  ui_category = "Tone Map Info (See Defines)";
+  ui_label    = " ";
+  ui_type     = "radio";
+  ui_text     = TONEMAP_TYPE_STRING;
+  nosave      = true;
+>;
 
 ///////////////////////////////////////////////////////////////////////////////////
 float SafeDivision(float a, float b, float f = 0) { return b != 0.f ? a / b : f; }
