@@ -7,15 +7,16 @@
   #define TONEMAP_TYPE 2
 #endif
 #if TONEMAP_TYPE == 0
-  #define TONEMAP_TYPE_STRING " - Type (0/2): Reinhard (Gradual)"
+  #define TONEMAP_TYPE_STRING " - Type (0/3): Reinhard (Gradual)"
 #elif  TONEMAP_TYPE == 1
-  #define TONEMAP_TYPE_STRING " - Type (1/2): Exponential Rolloff (Aggressive)"
+  #define TONEMAP_TYPE_STRING " - Type (1/3): Exponential Rolloff (Aggressive)"
 #elif  TONEMAP_TYPE == 2
-  #define TONEMAP_TYPE_STRING " - Type (2/2): Hermite Spline (Scalable)"
+  #define TONEMAP_TYPE_STRING " - Type (2/3): Hermite Spline (Scalable)"
+#elif  TONEMAP_TYPE == 3
+  #define TONEMAP_TYPE_STRING " - Type (2/3): NeuTwo"
 #else 
-  #define TONEMAP_TYPE_STRING " - Type (?/2): Error"
+  #define TONEMAP_TYPE_STRING " - Type (?/3): Error"
 #endif
-
 
 #ifndef TONEMAP_MODE
   #define TONEMAP_MODE 1
@@ -41,8 +42,19 @@
   #define TONEMAP_COLORSPACE_STRING " - Color Space (?/2): Error"
 #endif
 
+#ifndef TONEMAP_CLAMP
+  #define TONEMAP_CLAMP 0
+#endif
+#if TONEMAP_CLAMP == 0
+  #define TONEMAP_CLAMP_STRING " - Color Space Clamp (0/1): Clamp"
+#elif  TONEMAP_CLAMP == 1
+  #define TONEMAP_CLAMP_STRING " - Color Space Clamp (1/1): Mirror (Preserve but weird?)"
+#else 
+  #define TONEMAP_CLAMP_STRING " - Color Space Clamp (?/1): Error"
+#endif
+
 uniform float ToneMapPeak <
-    ui_type = "slider";
+    // ui_type = "slider";
     ui_category = "Tone Map";
     ui_label = "Peak";
     ui_tooltip = "Set to your display max.";
@@ -66,7 +78,7 @@ uniform float ToneMapPeak <
 
 #if TONEMAP_TYPE == 0 || TONEMAP_TYPE == 2
   uniform float ToneMapWhiteMax <
-      ui_type = "drag2";
+      ui_type = "drag";
       ui_category = "Tone Map";
       ui_label = "Expected Max";
       ui_tooltip = "Expected max for the tonemapper.\nReduce to white clip.";
@@ -101,9 +113,17 @@ uniform float ToneMapExposure <
     ui_step = 0.001;
 > = 1;
 
+uniform int GLOBAL_INFO_3
+<
+  ui_category = "Tone Map Info";
+  ui_label    = " ";
+  ui_type     = "radio";
+  ui_text     = TONEMAP_CLAMP_STRING;
+  nosave      = true;
+>;
 uniform int GLOBAL_INFO_2
 <
-  ui_category = "Tone Map Info (See Defines)";
+  ui_category = "Tone Map Info";
   ui_label    = " ";
   ui_type     = "radio";
   ui_text     = TONEMAP_COLORSPACE_STRING;
@@ -111,7 +131,7 @@ uniform int GLOBAL_INFO_2
 >;
 uniform int GLOBAL_INFO_1
 <
-  ui_category = "Tone Map Info (See Defines)";
+  ui_category = "Tone Map Info";
   ui_label    = " ";
   ui_type     = "radio";
   ui_text     = TONEMAP_MODE_STRING;
@@ -119,7 +139,7 @@ uniform int GLOBAL_INFO_1
 >;
 uniform int GLOBAL_INFO_0
 <
-  ui_category = "Tone Map Info (See Defines)";
+  ui_category = "Tone Map Info";
   ui_label    = " ";
   ui_type     = "radio";
   ui_text     = TONEMAP_TYPE_STRING;
@@ -128,7 +148,7 @@ uniform int GLOBAL_INFO_0
 
 ///////////////////////////////////////////////////////////////////////////////////
 float SafeDivision(float a, float b, float f = 0) { return b != 0.f ? a / b : f; }
-
+float3 Sign_UltraFast(float3 x) { return asfloat((asuint(x) & 0x80000000u) | 0x3F800000u); }
 float Rescale(float x, float x_min, float x_max, float y_min = 0, float y_max = 1, bool clamp = false) {
   float value = lerp(y_min, y_max, (x - x_min) / (x_max - x_min));
   if (clamp) value = saturate(value);
@@ -359,6 +379,39 @@ namespace HermiteSpline {
   }
 } 
 
+namespace NeuTwo {
+  /*
+   * Copyright (C) 2026 Carlos Lopez
+   * SPDX-License-Identifier: MIT
+   */
+  // Neutral tonemap
+  // Based on power of 2 (squared/sqrt)
+  // Naka-Rushton/Reinhard style tonemapper x/(x^2+k)^(1/2)
+  // Newton-Raphson friendly with rsqrt (faster than division)
+  // f'''(x) = 0 at x = 0.5 (half peak)
+  // https://www.desmos.com/calculator/gy1edro6nd
+  // Polar/Cartesian form of peak * cos(atan2(x, peak))
+  // Invertible with same complexity as forward
+
+  // f_{p}\left(x\right)=\frac{px}{\sqrt{xx+pp}}
+  float3 NeuTwo(float3 x, float peak) {
+    // also written as x * rhypot(x, peak)
+    float p = peak;
+
+    float3 numerator = p * x;
+    float3 denominator_squared = mad(x, x, p * p);
+    return numerator * rsqrt(denominator_squared);
+  }
+  float NeuTwo(float x, float peak) {
+    // also written as x * rhypot(x, peak)
+    float p = peak;
+
+    float numerator = p * x;
+    float denominator_squared = mad(x, x, p * p);
+    return numerator * rsqrt(denominator_squared);
+  }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -372,11 +425,18 @@ float3 Tonemap(float3 x) {
     const float whitemax = ToneMapWhiteMax / 80.;
   #endif
 
+  #if TONEMAP_CLAMP == 0
+    x = max(0, x);
+  #else
+    float3 s = Sign_UltraFast(x);
+    x = abs(x);
+  #endif
+
   #if TONEMAP_MODE == 0 
     float3 xT = x;
   #else
     float xT = GetLuminanceWorking(x);
-    if (xT <= 0) return x; 
+    if (xT <= 0) return x;
     float xTOrig = xT;
   #endif
 
@@ -386,6 +446,8 @@ float3 Tonemap(float3 x) {
     xT = ExpRoll::ExponentialRollOff(xT, shoulder, peak);
   #elif TONEMAP_TYPE == 2
     xT = HermiteSpline::HermiteSplineRolloffCool(xT, peak, whitemax);
+  #elif TONEMAP_TYPE == 3
+    xT = NeuTwo::NeuTwo(xT, peak);
   #endif
 
   #if TONEMAP_MODE == 0 
@@ -393,6 +455,10 @@ float3 Tonemap(float3 x) {
   #else
     x *= xT / xTOrig;
     if (IsMaxChannelScaleDown > 0) x = MaxChannelScaleDown(x, peak);
+  #endif
+
+  #if TONEMAP_CLAMP > 0
+    x *= s;
   #endif
 
   return x;
@@ -414,7 +480,6 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
     WIP;
   #endif
 
-  x = max(0, x);
   x *= ToneMapExposure;
   x = Tonemap(x);
 
@@ -435,7 +500,7 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
 
 technique lilium__RenoDX_ColorGrading 
 <
-  ui_label = "Lilium's Tone Mapping Alt. (scRGB)";
+  ui_label = "Lilium's Tone Mapping RenoDX (scRGB)";
 >
 {
 	pass Final {
@@ -450,7 +515,7 @@ ERROR_STUFF
 
 technique lilium__RenoDX_ColorGrading
 <
-  ui_label = "Lilium's Tone Mapping Alt. (scRGB) (ERROR)";
+  ui_label = "Lilium's Tone Mapping RenoDX (scRGB) (ERROR)";
 >
 VS_ERROR
 
