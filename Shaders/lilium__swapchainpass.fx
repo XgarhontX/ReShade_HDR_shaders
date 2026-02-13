@@ -8,10 +8,11 @@ uniform int DecodeGamma
   ui_category = "Decode";
   ui_label    = "Gamma";
   ui_type     = "combo";
-  ui_items    = "sRGB (Base)\0"
+  ui_items    = "Linear (None/Debug)\0"
+                "sRGB (Base)\0"
                 "2.2 (Stronger)\0";
   ui_tooltip = "Decode the formerly SDR-intended image.\nUsually it is sRGB, but it must be confirmed in shader code.\n\nSetting it one higher than intended is EOTF / Gamma Correction, but it messes with peak.\nTherefore, see the slider below.";
-> = 0;
+> = 1;
 
 uniform float DecodeUIBrightness <
   ui_type = "slider";
@@ -42,7 +43,7 @@ uniform bool EOTFEmuBT2020 <
     ui_category = "EOTF / Gamma Correction";
     ui_label = "Wide Color Gamut Boost";
     ui_tooltip = "Enocode to BT2020 before gamma correction, pushing out colors to WCG.";
-> = false;
+> = true;
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -83,10 +84,12 @@ float4 PS_Main(in float4 Position : SV_Position, float2 texcoord : TEXCOORD) : S
   #endif
 
   //Decode (in BT709)
-  float3 cS = Sign_UltraFast(color.xyz);
-  float3 cA = abs(color.xyz);
-  color.xyz = cS * (DecodeGamma == 0 ? Csp::Trc::sRGB_To::Linear(cA) : pow(cA, 2.2));
-	
+  if (DecodeGamma > 0) {
+    float3 cS = Sign_UltraFast(color.xyz);
+    float3 cA = abs(color.xyz);
+    color.xyz = cS * (DecodeGamma == 1 ? Csp::Trc::sRGB_To::Linear(cA) : pow(cA, 2.2));
+  }
+
   //UI Brightness
   color.xyz *= DecodeUIBrightness / 80;
 	
